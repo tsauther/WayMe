@@ -19,9 +19,7 @@ jobs:
         run: npm ci
       
       - name: Build
-        run: npm run build
-        env:
-          GITHUB_PAGES: true
+        run: npm run build -- --base=/WayMe/
       
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
