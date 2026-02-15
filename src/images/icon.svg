@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="#E0F7F4"/>
+
+  <!-- Scale body -->
+  <rect x="116" y="156" width="280" height="200" rx="40" fill="#FFFFFF"/>
+
+  <!-- Display -->
+  <rect x="156" y="188" width="200" height="64" rx="16" fill="#E6E9EF"/>
+
+  <!-- Digital dots -->
+  <circle cx="196" cy="220" r="12" fill="#2CC5B5"/>
+  <circle cx="256" cy="220" r="12" fill="#2CC5B5"/>
+  <circle cx="316" cy="220" r="12" fill="#2CC5B5"/>
+
+  <!-- Progress curve -->
+  <path d="M156 300 Q256 340 356 300"
+        stroke="#2CC5B5"
+        stroke-width="12"
+        fill="none"
+        stroke-linecap="round"/>
+</svg>
