@@ -127,20 +127,21 @@
           <h3 class="card-title">Units & Goals</h3>
           
           <div class="form-control">
-            <label class="label">
+            <label class="label" for="unitSelect">
               <span class="label-text">Measurement Unit</span>
             </label>
-            <select bind:value={settings.unit} class="select select-bordered select-primary">
+            <select id="unitSelect" bind:value={settings.unit} class="select select-bordered select-primary">
               <option value="lbs">Pounds (lbs)</option>
               <option value="kg">Kilograms (kg)</option>
             </select>
           </div>
 
           <div class="form-control">
-            <label class="label">
+            <label class="label" for="poundsPerWeekInput">
               <span class="label-text">Target Loss per Week ({settings.unit})</span>
             </label>
             <input 
+              id="poundsPerWeekInput"
               type="number" 
               bind:value={settings.poundsPerWeek} 
               min="0.5" 
@@ -157,10 +158,10 @@
           <h3 class="card-title">Notifications</h3>
           
           <div class="form-control">
-            <label class="label">
+            <label class="label" for="weighInDaySelect">
               <span class="label-text">Weigh In Day</span>
             </label>
-            <select bind:value={settings.weigh_in_day} class="select select-bordered select-primary">
+            <select id="weighInDaySelect" bind:value={settings.weigh_in_day} class="select select-bordered select-primary">
               <option value="Monday">Monday</option>
               <option value="Tuesday">Tuesday</option>
               <option value="Wednesday">Wednesday</option>
@@ -172,10 +173,11 @@
           </div>
 
           <div class="form-control">
-            <label class="label">
+            <label class="label" for="weighInTimeInput">
               <span class="label-text">Weigh In Time</span>
             </label>
             <input 
+              id="weighInTimeInput"
               type="time" 
               bind:value={settings.weigh_in_time}
               class="input input-bordered input-primary"
@@ -183,10 +185,11 @@
           </div>
 
           <div class="form-control">
-            <label class="label">
+            <label class="label" for="notifyHoursInput">
               <span class="label-text">Notify Hours Before Weigh In</span>
             </label>
             <input 
+              id="notifyHoursInput"
               type="number" 
               bind:value={settings.notifyHoursBefore} 
               min="1" 

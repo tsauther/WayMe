@@ -61,10 +61,11 @@
   </div>
 
   <div class="form-control w-full">
-    <label class="label">
+    <label class="label" for="weightInput">
       <span class="label-text font-semibold">Enter Weight</span>
     </label>
     <input 
+      id="weightInput"
       type="number" 
       step="0.1"
       bind:value={weight} 
@@ -76,13 +77,14 @@
   </div>
 
   <div class="form-control">
-    <label class="label">
+    <label class="label" for="unitGroup">
       <span class="label-text font-semibold">Unit</span>
     </label>
-    <div class="space-y-2">
-      <label class="label cursor-pointer">
+    <div class="space-y-2" id="unitGroup">
+      <label class="label cursor-pointer" for="unitLbs">
         <span class="label-text">Pounds (lbs)</span>
         <input 
+          id="unitLbs"
           type="radio" 
           name="unit" 
           class="radio radio-primary"
@@ -90,9 +92,10 @@
           value="lbs" 
         />
       </label>
-      <label class="label cursor-pointer">
+      <label class="label cursor-pointer" for="unitKg">
         <span class="label-text">Kilograms (kg)</span>
         <input 
+          id="unitKg"
           type="radio" 
           name="unit" 
           class="radio radio-primary"

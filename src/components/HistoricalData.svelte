@@ -65,10 +65,11 @@
       <h3 class="card-title">Add Past Weight Entry</h3>
       
       <div class="form-control">
-        <label class="label">
+        <label class="label" for="historyDateInput">
           <span class="label-text font-semibold">Date</span>
         </label>
         <input 
+          id="historyDateInput"
           type="date"
           bind:value={newEntry.date}
           class="input input-bordered input-primary"
@@ -77,10 +78,11 @@
       </div>
 
       <div class="form-control">
-        <label class="label">
+        <label class="label" for="historyWeightInput">
           <span class="label-text font-semibold">Weight</span>
         </label>
         <input 
+          id="historyWeightInput"
           type="number"
           step="0.1"
           bind:value={newEntry.weight}
@@ -91,13 +93,14 @@
       </div>
 
       <div class="form-control">
-        <label class="label">
+        <label class="label" for="historyUnitGroup">
           <span class="label-text font-semibold">Unit</span>
         </label>
-        <div class="space-y-2">
-          <label class="label cursor-pointer">
+        <div class="space-y-2" id="historyUnitGroup">
+          <label class="label cursor-pointer" for="historyUnitLbs">
             <span class="label-text">Pounds (lbs)</span>
             <input 
+              id="historyUnitLbs"
               type="radio" 
               name="hist-unit" 
               class="radio radio-primary"
@@ -106,9 +109,10 @@
               disabled={loading}
             />
           </label>
-          <label class="label cursor-pointer">
+          <label class="label cursor-pointer" for="historyUnitKg">
             <span class="label-text">Kilograms (kg)</span>
             <input 
+              id="historyUnitKg"
               type="radio" 
               name="hist-unit" 
               class="radio radio-primary"
