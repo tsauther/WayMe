@@ -17,7 +17,7 @@
   <div class="fixed inset-0 bg-base-100 flex flex-col items-center justify-center z-50">
     <div class="flex flex-col items-center gap-4">
       <img 
-        src="/logo.svg" 
+        src="logo.svg" 
         alt="WayMe Logo" 
         class="w-64 h-64 animate-pulse"
       />

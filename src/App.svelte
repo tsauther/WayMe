@@ -69,7 +69,7 @@
         on:click={() => setView('dashboard')}
       >
         <img 
-          src="/logo.svg" 
+          src="logo.svg" 
           alt="WayMe Logo" 
           class="animate-pulse"
           style="width: 151px; height: 46px;"
