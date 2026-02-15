@@ -12,7 +12,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
       registration.unregister()
     })
   }).then(() => {
-    navigator.serviceWorker.register('/sw.js').catch(err => {
+    navigator.serviceWorker.register('./sw.js').catch(err => {
       console.log('Service Worker registration failed:', err)
     })
   })

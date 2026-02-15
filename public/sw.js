@@ -26,6 +26,8 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') {
     return
   }
+// Only handle requests inside the PWA scope (important for GitHub Pages) 
+ if (!event.request.url.startsWith(self.registration.scope)) return
 
   event.respondWith(
     fetch(event.request)
