@@ -1,10 +1,5 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "env": {
-    "STRAVA_CLIENT_ID": "@strava_client_id",
-    "STRAVA_CLIENT_SECRET": "@strava_client_secret",
-    "STRAVA_REDIRECT_URI": "@strava_redirect_uri"
-  }
+  "outputDirectory": "dist"
 }
