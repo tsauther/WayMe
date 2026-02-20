@@ -57,8 +57,46 @@ export async function getSettings(key) {
 
 // ==================== STRAVA ACTIVITIES ====================
 
+/**
+ * Calculate estimated calories burned for an activity
+ * Based on activity type, duration, distance, and user weight
+ */
+async function calculateCalories(activity) {
+  // Get current user weight
+  const weights = await db.weights.orderBy('timestamp').last()
+  const userWeight = weights ? weights.weight : 170 // Default to 170 lbs if no weight data
+  const weightInKg = weights?.unit === 'kg' ? userWeight : userWeight * 0.453592
+  
+  const durationInMinutes = (activity.elapsed_time || 0) / 60
+  const distanceInMiles = (activity.distance || 0) / 1609.34
+  
+  // MET values (Metabolic Equivalent of Task) for different activities
+  const metValues = {
+    'Run': 9.8,
+    'Ride': 8.0,
+    'Walk': 3.5,
+    'Hike': 6.0,
+    'Swim': 8.3,
+    'WeightTraining': 6.0,
+    'Workout': 5.0,
+    'Yoga': 2.5,
+    'VirtualRide': 8.0,
+    'VirtualRun': 9.8
+  }
+  
+  const met = metValues[activity.type] || 5.0 // Default MET value
+  
+  // Calories = MET × weight (kg) × duration (hours)
+  const calories = Math.round(met * weightInKg * (durationInMinutes / 60))
+  
+  return calories
+}
+
 export async function saveActivity(activity) {
   try {
+    // Calculate calories if not provided by Strava
+    const calculatedCalories = activity.calories || await calculateCalories(activity)
+    
     // Transform Strava activity to our schema
     const storedActivity = {
       stravaId: activity.id,
@@ -69,11 +107,12 @@ export async function saveActivity(activity) {
       distance: activity.distance, // meters
       duration: activity.elapsed_time, // seconds
       elevation: activity.total_elevation_gain, // meters
-      calories: activity.calories || 0,
+      calories: calculatedCalories,
       heartRate: activity.average_heartrate || 0,
       movingTime: activity.moving_time,
       averageSpeed: activity.average_speed, // m/s
       maxSpeed: activity.max_speed, // m/s
+      summaryPolyline: activity.map?.summary_polyline || null,
       raw: activity // Store full Strava response
     }
     await db.activities.put(storedActivity)

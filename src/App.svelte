@@ -7,6 +7,7 @@
   import Settings from './components/Settings.svelte'
   import SplashScreen from './components/SplashScreen.svelte'
   import StravaAuth from './components/StravaAuth.svelte'
+  import StravaActivities from './components/StravaActivities.svelte'
 
   let currentView = 'dashboard'
 
@@ -21,7 +22,7 @@
       currentView = 'stravaauth'
     } else if (hash.startsWith('/')) {
       const view = hash.slice(1) // Remove leading /
-      if (['dashboard', 'entry', 'settings'].includes(view)) {
+      if (['dashboard', 'entry', 'settings', 'activities'].includes(view)) {
         currentView = view
       }
     }
@@ -33,7 +34,7 @@
         currentView = 'stravaauth'
       } else if (newHash.startsWith('/')) {
         const newView = newHash.slice(1)
-        if (['dashboard', 'entry', 'settings'].includes(newView)) {
+        if (['dashboard', 'entry', 'settings', 'activities'].includes(newView)) {
           currentView = newView
         }
       }
@@ -126,6 +127,12 @@
       Dashboard
     </button>
     <button 
+      class="tab {currentView === 'activities' ? 'tab-active' : ''}"
+      on:click={() => setView('activities')}
+    >
+      Activities
+    </button>
+    <button 
       class="tab {currentView === 'entry' ? 'tab-active' : ''}"
       on:click={() => setView('entry')}
     >
@@ -142,6 +149,8 @@
   <div class="p-6">
     {#if currentView === 'dashboard'}
       <Dashboard />
+    {:else if currentView === 'activities'}
+      <StravaActivities />
     {:else if currentView === 'entry'}
       <WeightEntry />
     {:else if currentView === 'settings'}

@@ -5,7 +5,6 @@
   import { stravaSyncService } from '../services/stravaSync.js'
   import HistoricalData from './HistoricalData.svelte'
   import InstallPrompt from './InstallPrompt.svelte'
-  import StravaActivities from './StravaActivities.svelte'
 
   let settings = {
     unit: 'lbs',
@@ -137,12 +136,6 @@
       on:click={() => settingsTab = 'historical'}
     >
       Historical Data
-    </button>
-    <button 
-      class="tab {settingsTab === 'activities' ? 'tab-active' : ''}"
-      on:click={() => settingsTab = 'activities'}
-    >
-      Strava Activities
     </button>
   </div>
 
@@ -295,7 +288,5 @@
     </div>
   {:else if settingsTab === 'historical'}
     <HistoricalData />
-  {:else if settingsTab === 'activities'}
-    <StravaActivities />
   {/if}
 </div>

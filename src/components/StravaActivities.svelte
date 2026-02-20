@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import { getActivities, getStravaStats } from '../db.js'
+  import { generateRouteSvg } from '../utils/polyline.js'
 
   let activities = []
   let stats = {}
@@ -130,15 +131,27 @@
       {#each sortedActivities as activity (activity.stravaId)}
         <div class="card bg-base-200 shadow-sm hover:shadow-md transition-shadow">
           <div class="card-body">
-            <div class="flex justify-between items-start">
-              <div>
+            <div class="flex justify-between items-start mb-4">
+              <div class="flex-1">
                 <h3 class="card-title text-lg">{activity.name}</h3>
                 <p class="text-sm text-gray-500">{formatDate(activity.timestamp)}</p>
               </div>
-              <div class="badge badge-primary">{activity.type}</div>
+              <div class="flex flex-col items-end gap-1">
+                <div class="badge badge-primary">{activity.type}</div>
+                {#if activity.calories > 0}
+                  <div class="text-lg font-bold text-secondary">{activity.calories} cal</div>
+                {/if}
+              </div>
             </div>
 
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
+            <!-- Route Map -->
+            {#if activity.summaryPolyline}
+              <div class="mb-4 rounded-lg overflow-hidden border border-gray-300">
+                {@html generateRouteSvg(activity.summaryPolyline, 600, 200)}
+              </div>
+            {/if}
+
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div>
                 <div class="text-xs text-gray-500">Distance</div>
                 <div class="font-bold text-primary">{formatDistance(activity.distance || 0)}</div>
@@ -159,10 +172,10 @@
                   <div class="font-bold text-primary">{Math.round(activity.heartRate)} bpm</div>
                 </div>
               {/if}
-              {#if activity.calories > 0}
+              {#if activity.averageSpeed > 0}
                 <div>
-                  <div class="text-xs text-gray-500">Calories</div>
-                  <div class="font-bold text-primary">{activity.calories}</div>
+                  <div class="text-xs text-gray-500">Avg Speed</div>
+                  <div class="font-bold text-primary">{((activity.averageSpeed * 2.23694).toFixed(1))} mph</div>
                 </div>
               {/if}
             </div>

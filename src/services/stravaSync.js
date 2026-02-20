@@ -9,7 +9,8 @@ import {
   saveActivity,
   getActivities,
   updateStravaStats,
-  getStravaStats
+  getStravaStats,
+  getWeights
 } from '../db.js'
 
 class StravaSyncService {
@@ -64,40 +65,65 @@ class StravaSyncService {
 
   /**
    * Fetch activities from backend and store them
+   * Pulls 10 years of history backwards from today
    */
   async fetchAndStoreActivities(accessToken) {
     try {
-      // Fetch from backend (which proxies to Strava)
-      const response = await fetch('/api/strava/activities', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
+      // Calculate 10 years ago timestamp
+      const tenYearsAgo = Math.floor((Date.now() - (10 * 365 * 24 * 60 * 60 * 1000)) / 1000)
+      const now = Math.floor(Date.now() / 1000)
+      
+      let page = 1
+      let totalSaved = 0
+      let hasMore = true
+      const perPage = 200 // Max allowed by Strava
+
+      console.log(`Fetching Strava activities from last 10 years...`)
+
+      while (hasMore) {
+        // Fetch from backend (which proxies to Strava)
+        const response = await fetch(
+          `/api/strava/activities?page=${page}&per_page=${perPage}&after=${tenYearsAgo}&before=${now}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+
+        if (!response.ok) {
+          const error = await response.json()
+          console.error('Failed to fetch activities:', error)
+          return false
         }
-      })
 
-      if (!response.ok) {
-        const error = await response.json()
-        console.error('Failed to fetch activities:', error)
-        return false
+        const data = await response.json()
+        const activities = data.activities || []
+
+        if (activities.length === 0) {
+          hasMore = false
+          break
+        }
+
+        // Save each activity to database with calculated calories
+        for (const activity of activities) {
+          const saved = await saveActivity(activity)
+          if (saved) totalSaved++
+        }
+
+        console.log(`Page ${page}: Saved ${activities.length} activities (Total: ${totalSaved})`)
+
+        // If we got fewer than perPage, we're done
+        if (activities.length < perPage) {
+          hasMore = false
+        } else {
+          page++
+        }
       }
 
-      const data = await response.json()
-      const newActivities = data.activities || []
-
-      if (newActivities.length === 0) {
-        console.log('No new activities to sync')
-        return true
-      }
-
-      // Save each activity to database
-      let savedCount = 0
-      for (const activity of newActivities) {
-        const saved = await saveActivity(activity)
-        if (saved) savedCount++
-      }
-
-      console.log(`Saved ${savedCount} new activities`)
+      console.log(`Sync complete! Saved ${totalSaved} total activities`)
 
       // Recalculate lifetime stats
       await this.recalculateStats()

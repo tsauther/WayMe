@@ -37,18 +37,22 @@ export default async function handler(req, res) {
   try {
     const perPage = req.query.per_page || 50;
     const page = req.query.page || 1;
+    const after = req.query.after || null; // Unix timestamp
+    const before = req.query.before || null; // Unix timestamp
+
+    // Build Strava API URL with parameters
+    let url = `https://www.strava.com/api/v3/athlete/activities?per_page=${perPage}&page=${page}`;
+    if (after) url += `&after=${after}`;
+    if (before) url += `&before=${before}`;
 
     // Fetch activities from Strava API
-    const activitiesResponse = await fetch(
-      `https://www.strava.com/api/v3/athlete/activities?per_page=${perPage}&page=${page}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const activitiesResponse = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (activitiesResponse.status === 401) {
       return res.status(401).json({
