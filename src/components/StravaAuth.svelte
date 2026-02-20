@@ -9,9 +9,18 @@
   onMount(async () => {
     try {
       // Get authorization code from URL
-      const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
-      const state = params.get('state')
+      // Strava might put params in search OR in hash depending on redirect_uri format
+      let params = new URLSearchParams(window.location.search)
+      let code = params.get('code')
+      
+      // If not in search, check in hash (after the route)
+      if (!code && window.location.hash.includes('?')) {
+        const hashParts = window.location.hash.split('?')
+        if (hashParts.length > 1) {
+          params = new URLSearchParams(hashParts[1])
+          code = params.get('code')
+        }
+      }
 
       if (!code) {
         throw new Error('No authorization code received')
