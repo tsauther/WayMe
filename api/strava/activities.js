@@ -72,6 +72,21 @@ export default async function handler(req, res) {
 
     const activities = await activitiesResponse.json();
 
+    // Debug logging - see what Strava returns
+    if (activities.length > 0) {
+      const firstAct = activities[0]
+      const lastAct = activities[activities.length - 1]
+      console.log(`[Strava API Response Debug]`)
+      console.log(`  URL: ${url}`)
+      console.log(`  Total returned: ${activities.length}`)
+      console.log(`  First activity: ${firstAct.name} on ${firstAct.start_date} (id: ${firstAct.id})`)
+      console.log(`  Last activity: ${lastAct.name} on ${lastAct.start_date} (id: ${lastAct.id})`)
+      console.log(`  Date range: ${lastAct.start_date} to ${firstAct.start_date}`)
+    } else {
+      console.log(`[Strava API Response] No activities returned`)
+      console.log(`  URL: ${url}`)
+    }
+
     // Return activities data
     return res.status(200).json({
       activities,

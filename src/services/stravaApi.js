@@ -63,16 +63,23 @@ class StravaApiClient {
   }
 
   /**
-   * Refresh access token (call this before token expires)
-   * Note: Requires a backend endpoint to handle refresh logic
-   * @param {string} refreshToken
-   * @returns {Promise<{accessToken, expiresAt}>}
+   * Refresh access token when it expires
+   * @param {string} refreshToken - Strava refresh token
+   * @returns {Promise<{accessToken, refreshToken, expiresAt}>}
    */
   async refreshToken(refreshToken) {
-    // TODO: Create /api/strava/refresh.js endpoint
-    // For now, direct Strava API call would bypass your server
-    console.warn('Token refresh not yet implemented');
-    return null;
+    const response = await fetch(`${this.baseUrl}/api/strava/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(`Token refresh failed: ${error.error}`)
+    }
+
+    return await response.json()
   }
 }
 

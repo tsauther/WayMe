@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte'
-  import { saveSettings, getSettings, exportData, getStravaAuth, clearStravaAuth } from '../db.js'
+  import { saveSettings, getSettings, exportData, importData, resetDatabase, getStravaAuth, clearStravaAuth } from '../db.js'
   import { theme } from '../theme.js'
   import { stravaSyncService } from '../services/stravaSync.js'
   import HistoricalData from './HistoricalData.svelte'
@@ -16,9 +16,12 @@
 
   let saving = false
   let showSuccess = false
+  let showImportSuccess = false
+  let importError = ''
   let settingsTab = 'config'
   let stravaAuth = null
   let stravaConnected = false
+  let fileInput
 
   onMount(() => {
     loadSettings()
@@ -80,6 +83,56 @@
     }
   }
 
+  async function handleImport() {
+    fileInput.click()
+  }
+
+  async function handleFileSelect(event) {
+    const file = event.target.files[0]
+    if (!file) return
+
+    importError = ''
+    showImportSuccess = false
+
+    try {
+      const text = await file.text()
+      const success = await importData(text)
+      
+      if (success) {
+        showImportSuccess = true
+        await loadSettings()
+        setTimeout(() => {
+          showImportSuccess = false
+        }, 3000)
+      } else {
+        importError = 'Failed to import data. Please check the file format.'
+      }
+    } catch (err) {
+      console.error('Error importing file:', err)
+      importError = 'Error reading file. Please ensure it is a valid JSON export.'
+    }
+    
+    // Reset file input
+    event.target.value = ''
+  }
+
+  async function resetDatabasePrompt() {
+    if (confirm('WARNING: This will DELETE all data (weights, activities, settings). This cannot be undone. Continue?')) {
+      try {
+        const success = await resetDatabase()
+        if (success) {
+          showImportSuccess = true
+          window.location.reload()
+        } else {
+          importError = 'Failed to reset database'
+        }
+      } catch (err) {
+        console.error('Error resetting database:', err)
+        importError = 'Error resetting database'
+      }
+    }
+  }
+
   function toggleTheme() {
     theme.set($theme === 'dark' ? 'light' : 'dark')
   }
@@ -88,7 +141,7 @@
     // Get Client ID from environment (you'll need to make this configurable)
     const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID || '123456' // Placeholder
     const redirectUri = encodeURIComponent(window.location.origin + '/#/auth/strava')
-    const scope = 'activity:read'
+    const scope = 'activity:read_all' // Includes private activities
     
     const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`
     window.location.href = authUrl
@@ -281,9 +334,40 @@
     <div class="card bg-base-200 shadow-md">
       <div class="card-body">
         <h3 class="card-title">Data Management</h3>
-        <button on:click={handleExport} class="btn btn-secondary w-full">
-          📥 Export Data as JSON
-        </button>
+        
+        <div class="space-y-3">
+          <button on:click={handleExport} class="btn btn-secondary w-full">
+            📥 Export Data as JSON
+          </button>
+          
+          <button on:click={handleImport} class="btn btn-accent w-full">
+            📤 Import Data from JSON
+          </button>
+          
+          <input 
+            type="file" 
+            bind:this={fileInput}
+            on:change={handleFileSelect}
+            accept=".json"
+            class="hidden"
+          />
+          
+          {#if showImportSuccess}
+            <div class="alert alert-success">
+              <span>✅ Data imported successfully!</span>
+            </div>
+          {/if}
+          
+          {#if importError}
+            <div class="alert alert-error">
+              <span>❌ {importError}</span>
+            </div>
+          {/if}
+          
+          <button on:click={resetDatabasePrompt} class="btn btn-outline btn-error w-full">
+            🗑️ Reset All Data (DANGEROUS)
+          </button>
+        </div>
       </div>
     </div>
   {:else if settingsTab === 'historical'}

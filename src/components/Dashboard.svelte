@@ -1,12 +1,13 @@
 <script>
   import { onMount } from 'svelte'
-  import { getWeights, getSettings } from '../db.js'
+  import { getWeights, getSettings, getWeeklyExerciseHistory } from '../db.js'
   import { theme } from '../theme.js'
   import { stravaSyncService } from '../services/stravaSync.js'
   import uPlot from 'uplot'
   import 'uplot/dist/uPlot.min.css'
 
   let weightData = []
+  let weeklyExerciseData = []
   let dailyCalorieLimit = 0
   let currentWeight = null
   let lastWeighIn = null
@@ -80,18 +81,50 @@
     if (!chartContainer || weightData.length === 0) return
 
     // Filter data by time range
-    const filteredData = filterDataByTimeRange(weightData)
+    const filteredWeights = filterDataByTimeRange(weightData)
 
-    // Prepare data for uPlot (timestamps in seconds, weights)
-    const timestamps = filteredData.map(d => Math.floor(d.timestamp / 1000))
-    const weights = filteredData.map(d => d.weight)
-
-    if (timestamps.length === 0) {
+    if (filteredWeights.length === 0) {
       chartContainer.innerHTML = '<p class="text-center text-gray-500 p-4">No data for selected time range</p>'
       return
     }
 
-    const data = [timestamps, weights]
+    // Prepare weight data for uPlot (timestamps in seconds, weights)
+    const timestamps = filteredWeights.map(d => Math.floor(d.timestamp / 1000))
+    const weights = filteredWeights.map(d => d.weight)
+
+    // Filter weekly exercise data by time range and prepare for chart
+    // Weekly exercise timestamps should be aligned with the chart's time axis
+    const cutoffTime = (() => {
+      const now = Date.now()
+      switch (timeRange) {
+        case '1m': return now - 30 * 24 * 60 * 60 * 1000
+        case '3m': return now - 90 * 24 * 60 * 60 * 1000
+        case '6m': return now - 180 * 24 * 60 * 60 * 1000
+        case '1y': return now - 365 * 24 * 60 * 60 * 1000
+        case 'all': return 0
+        default: return now - 30 * 24 * 60 * 60 * 1000
+      }
+    })()
+
+    // Create a map of timestamps to exercise values
+    const exerciseMap = new Map()
+    for (const week of weeklyExerciseData) {
+      if (week.weekStartTimestamp >= cutoffTime) {
+        exerciseMap.set(Math.floor(week.weekStartTimestamp / 1000), week.caloriesBurned)
+      }
+    }
+
+    // Create exercise array aligned with weight timestamps
+    const exerciseValues = timestamps.map(ts => {
+      // Find nearest week start
+      const nearestWeek = Array.from(exerciseMap.keys()).reduce((prev, curr) => {
+        return Math.abs(curr - ts) < Math.abs(prev - ts) ? curr : prev
+      }, timestamps[0])
+      
+      return exerciseMap.get(nearestWeek) || 0
+    })
+
+    const data = [timestamps, weights, exerciseValues]
 
     // Determine text color based on theme
     const textColor = currentTheme === 'dark' ? '#e5e7eb' : '#1f2937'
@@ -104,9 +137,37 @@
       series: [
         {},
         {
-          label: 'Weight',
+          label: 'Weight (lbs)',
           stroke: 'hsl(217, 100%, 59%)',
           fill: 'rgba(33, 150, 243, 0.1)',
+          scale: 'weight'
+        },
+        {
+          label: 'Weekly Exercise (cal)',
+          stroke: 'hsl(142, 71%, 45%)',
+          fill: 'rgba(34, 197, 94, 0.1)',
+          scale: 'exercise'
+        }
+      ],
+      scales: {
+        weight: {
+          side: 0
+        },
+        exercise: {
+          side: 1
+        }
+      },
+      axes: [
+        {},
+        {
+          label: 'Weight (lbs)',
+          scale: 'weight',
+          side: 0
+        },
+        {
+          label: 'Exercise (cal)',
+          scale: 'exercise',
+          side: 1
         }
       ]
     }
@@ -122,6 +183,10 @@
   async function loadData() {
     const weights = await getWeights(100)
     weightData = weights.reverse()
+    
+    // Load weekly exercise data
+    const weeklyExercise = await getWeeklyExerciseHistory(104) // 2 years of weeks
+    weeklyExerciseData = weeklyExercise.reverse()
     
     if (weights.length > 0) {
       currentWeight = weights[weights.length - 1].weight

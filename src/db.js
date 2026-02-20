@@ -1,20 +1,29 @@
 import Dexie from 'dexie'
 
-// Initialize Dexie database
+// Initialize Dexie database with clean, simple schema
 export const db = new Dexie('WayMeDB')
 
 db.version(1).stores({
   weights: '++id, timestamp',
-  settings: 'key'
+  settings: 'key',
+  activities: '++id, timestamp, type, stravaId',
+  stravaStats: 'key',
+  stravaAuth: 'key',
+  weeklyExercise: '++id, weekStartTimestamp'
 })
 
-db.version(2).stores({
-  weights: '++id, timestamp',
-  settings: 'key',
-  activities: '++id, timestamp, type',
-  stravaStats: 'key',
-  stravaAuth: 'key'
-})
+// Database reset function - clears all data but keeps schema
+export async function resetDatabase() {
+  try {
+    await db.delete()
+    await db.open()
+    console.log('Database reset complete')
+    return true
+  } catch (error) {
+    console.error('Error resetting database:', error)
+    return false
+  }
+}
 
 export async function addWeight(weight, unit, timestamp = Date.now()) {
   try {
@@ -94,6 +103,15 @@ async function calculateCalories(activity) {
 
 export async function saveActivity(activity) {
   try {
+    // Check if activity already exists by stravaId
+    if (activity.id) {
+      const existing = await db.activities.where('stravaId').equals(activity.id).first()
+      if (existing) {
+        console.log(`Activity ${activity.id} already exists, skipping duplicate`)
+        return false
+      }
+    }
+    
     // Calculate calories if not provided by Strava
     const calculatedCalories = activity.calories || await calculateCalories(activity)
     
@@ -115,7 +133,7 @@ export async function saveActivity(activity) {
       summaryPolyline: activity.map?.summary_polyline || null,
       raw: activity // Store full Strava response
     }
-    await db.activities.put(storedActivity)
+    await db.activities.add(storedActivity)
     return true
   } catch (error) {
     console.error('Error saving activity:', error)
@@ -125,7 +143,11 @@ export async function saveActivity(activity) {
 
 export async function getActivities(limit = 100) {
   try {
-    return await db.activities.reverse().limit(limit).toArray()
+    return await db.activities
+      .orderBy('timestamp')
+      .reverse()
+      .limit(limit)
+      .toArray()
   } catch (error) {
     console.error('Error fetching activities:', error)
     return []
@@ -138,6 +160,43 @@ export async function getActivityCount() {
   } catch (error) {
     console.error('Error counting activities:', error)
     return 0
+  }
+}
+
+// ==================== WEEKLY EXERCISE ====================
+
+export async function saveWeeklyExercise(weekStartTimestamp, caloriesBurned) {
+  try {
+    // Check if this week already exists
+    const existing = await db.weeklyExercise.where('weekStartTimestamp').equals(weekStartTimestamp).first()
+    if (existing) {
+      // Update existing record
+      await db.weeklyExercise.update(existing.id, { caloriesBurned })
+    } else {
+      // Add new record
+      await db.weeklyExercise.add({
+        weekStartTimestamp,
+        caloriesBurned,
+        timestamp: Date.now()
+      })
+    }
+    return true
+  } catch (error) {
+    console.error('Error saving weekly exercise:', error)
+    return false
+  }
+}
+
+export async function getWeeklyExerciseHistory(limit = 52) {
+  try {
+    return await db.weeklyExercise
+      .orderBy('weekStartTimestamp')
+      .reverse()
+      .limit(limit)
+      .toArray()
+  } catch (error) {
+    console.error('Error fetching weekly exercise history:', error)
+    return []
   }
 }
 
@@ -222,5 +281,85 @@ export async function exportData() {
   } catch (error) {
     console.error('Error exporting data:', error)
     return null
+  }
+}
+
+// ==================== IMPORT ====================
+
+export async function importData(jsonData) {
+  try {
+    const data = JSON.parse(jsonData)
+    let importedCount = 0
+    let skippedCount = 0
+    
+    // Import weights
+    if (data.weights && Array.isArray(data.weights)) {
+      for (const weight of data.weights) {
+        try {
+          // Remove id to let DB assign new ones
+          const { id, ...weightWithoutId } = weight
+          await db.weights.add(weightWithoutId)
+          importedCount++
+        } catch (err) {
+          console.warn('Skipped weight:', err)
+          skippedCount++
+        }
+      }
+    }
+    
+    // Import settings
+    if (data.settings && Array.isArray(data.settings)) {
+      for (const setting of data.settings) {
+        try {
+          await db.settings.put(setting)
+          importedCount++
+        } catch (err) {
+          console.warn('Skipped setting:', err)
+          skippedCount++
+        }
+      }
+    }
+    
+    // Import activities - deduplicate by stravaId
+    if (data.activities && Array.isArray(data.activities)) {
+      for (const activity of data.activities) {
+        try {
+          // Check if already in DB by stravaId
+          if (activity.stravaId) {
+            const existing = await db.activities.where('stravaId').equals(activity.stravaId).first()
+            if (existing) {
+              skippedCount++
+              continue
+            }
+          }
+          // Remove id to let DB assign new ones
+          const { id, ...activityWithoutId } = activity
+          await db.activities.add(activityWithoutId)
+          importedCount++
+        } catch (err) {
+          console.warn('Skipped activity:', err)
+          skippedCount++
+        }
+      }
+    }
+    
+    // Import Strava stats
+    if (data.stravaStats && Array.isArray(data.stravaStats)) {
+      for (const stat of data.stravaStats) {
+        try {
+          await db.stravaStats.put(stat)
+          importedCount++
+        } catch (err) {
+          console.warn('Skipped stat:', err)
+          skippedCount++
+        }
+      }
+    }
+    
+    console.log(`Import complete: ${importedCount} imported, ${skippedCount} skipped`)
+    return true
+  } catch (error) {
+    console.error('Error importing data:', error)
+    return false
   }
 }

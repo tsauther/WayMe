@@ -6,12 +6,15 @@
 
 import {
   getStravaAuth,
+  saveStravaAuth,
   saveActivity,
   getActivities,
   updateStravaStats,
   getStravaStats,
-  getWeights
+  getWeights,
+  saveWeeklyExercise
 } from '../db.js'
+import { stravaApi } from './stravaApi.js'
 
 class StravaSyncService {
   constructor() {
@@ -39,13 +42,33 @@ class StravaSyncService {
         return false
       }
 
-      // Check if token is expired
+      // Check if token is expired and refresh if needed
       if (auth.expiresAt && auth.expiresAt < Date.now()) {
-        console.log('Strava token expired, user needs to re-authenticate')
-        // TODO: Implement token refresh
-        return false
+        console.log('Strava token expired, attempting refresh...')
+        try {
+          const refreshed = await stravaApi.refreshToken(auth.refreshToken)
+          if (refreshed && refreshed.accessToken) {
+            // Update stored auth with new token
+            await saveStravaAuth({
+              ...auth,
+              accessToken: refreshed.accessToken,
+              refreshToken: refreshed.refreshToken || auth.refreshToken,
+              expiresAt: refreshed.expiresAt,
+              expiresIn: refreshed.expiresIn
+            })
+            console.log('Token refreshed successfully')
+            auth.accessToken = refreshed.accessToken
+            auth.expiresAt = refreshed.expiresAt
+          } else {
+            throw new Error('No new token returned')
+          }
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError)
+          console.log('User needs to re-authenticate')
+          return false
+        }
       }
-
+      
       console.log('Starting Strava sync...')
       const success = await this.fetchAndStoreActivities(auth.accessToken)
       
@@ -65,25 +88,24 @@ class StravaSyncService {
 
   /**
    * Fetch activities from backend and store them
-   * Pulls 10 years of history backwards from today
+   * Pulls activities from newest to oldest with pagination
    */
   async fetchAndStoreActivities(accessToken) {
     try {
-      // Calculate 10 years ago timestamp
-      const tenYearsAgo = Math.floor((Date.now() - (10 * 365 * 24 * 60 * 60 * 1000)) / 1000)
-      const now = Math.floor(Date.now() / 1000)
-      
       let page = 1
       let totalSaved = 0
       let hasMore = true
       const perPage = 200 // Max allowed by Strava
 
-      console.log(`Fetching Strava activities from last 10 years...`)
+      console.log(`Fetching Strava activities (newest first)...`)
 
-      while (hasMore) {
+      while (hasMore && page <= 50) { // Limit to 50 pages (10,000 activities max)
+        console.log(`========== Fetching page ${page} ==========`)
+        
         // Fetch from backend (which proxies to Strava)
+        // Strava returns newest first by default
         const response = await fetch(
-          `/api/strava/activities?page=${page}&per_page=${perPage}&after=${tenYearsAgo}&before=${now}`,
+          `/api/strava/activities?page=${page}&per_page=${perPage}`,
           {
             method: 'GET',
             headers: {
@@ -102,25 +124,54 @@ class StravaSyncService {
         const data = await response.json()
         const activities = data.activities || []
 
+        console.log(`Received ${activities.length} activities`)
+
         if (activities.length === 0) {
+          console.log('No more activities to fetch - breaking loop')
           hasMore = false
           break
         }
 
-        // Save each activity to database with calculated calories
-        for (const activity of activities) {
-          const saved = await saveActivity(activity)
-          if (saved) totalSaved++
+        // Log activity dates for debugging
+        const actDates = activities.map(a => new Date(a.start_date).toISOString().split('T')[0]).join(', ')
+        console.log(`Page ${page}: ${activities.length} activities [${actDates}]`)
+        
+        // CRITICAL DEBUG: Show first and last activity 
+        if (activities.length > 0) {
+          const first = activities[0]
+          const last = activities[activities.length - 1]
+          console.log(`  First activity: "${first.name}" on ${first.start_date} (id: ${first.id})`)
+          console.log(`  Last activity: "${last.name}" on ${last.start_date} (id: ${last.id})`)
+          const firstDate = new Date(first.start_date).getTime()
+          const lastDate = new Date(last.start_date).getTime()
+          if (firstDate < lastDate) {
+            console.log(`  WARNING: Activities are in ASCENDING order (oldest first)!`)
+          } else {
+            console.log(`  ✓ Activities are in DESCENDING order (newest first)`)
+          }
         }
 
-        console.log(`Page ${page}: Saved ${activities.length} activities (Total: ${totalSaved})`)
+        // Save each activity to database with calculated calories
+        let savedCount = 0
+        for (const activity of activities) {
+          const saved = await saveActivity(activity)
+          if (saved) {
+            savedCount++
+            totalSaved++
+          }
+        }
+
+        console.log(`Page ${page}: Saved ${savedCount}/${activities.length} activities (Total saved: ${totalSaved})`)  
 
         // If we got fewer than perPage, we're done
         if (activities.length < perPage) {
+          console.log(`Got ${activities.length} < ${perPage}, setting hasMore = false`)
           hasMore = false
         } else {
+          console.log(`Got ${activities.length} == ${perPage}, incrementing page to ${page + 1}`)
           page++
         }
+        console.log(`========== End of page ${page - 1} ==========\n`)
       }
 
       console.log(`Sync complete! Saved ${totalSaved} total activities`)
@@ -168,10 +219,53 @@ class StravaSyncService {
 
       await updateStravaStats(stats)
       console.log('Stats updated:', stats)
+
+      // Also calculate and store weekly exercise data
+      await this.calculateWeeklyExercise(activities)
+
       return stats
     } catch (error) {
       console.error('Error recalculating stats:', error)
       return null
+    }
+  }
+
+  /**
+   * Calculate and store weekly exercise calories for all weeks in activity history
+   */
+  async calculateWeeklyExercise(activities) {
+    try {
+      // Sort activities by timestamp (oldest first)
+      const sortedActivities = activities.sort((a, b) => a.timestamp - b.timestamp)
+
+      // Group activities by week (Sunday start)
+      const weeks = new Map()
+
+      for (const activity of sortedActivities) {
+        const actDate = new Date(activity.timestamp)
+        const dayOfWeek = actDate.getDay()
+        const weekStart = new Date(actDate)
+        weekStart.setDate(actDate.getDate() - dayOfWeek)
+        weekStart.setHours(0, 0, 0, 0)
+
+        const weekStartTime = weekStart.getTime()
+
+        if (!weeks.has(weekStartTime)) {
+          weeks.set(weekStartTime, 0)
+        }
+
+        const currentCalories = weeks.get(weekStartTime)
+        weeks.set(weekStartTime, currentCalories + (activity.calories || 0))
+      }
+
+      // Save each week's data
+      for (const [weekStartTime, calories] of weeks) {
+        await saveWeeklyExercise(weekStartTime, Math.round(calories))
+      }
+
+      console.log(`Calculated and saved ${weeks.size} weeks of exercise data`)
+    } catch (error) {
+      console.error('Error calculating weekly exercise:', error)
     }
   }
 

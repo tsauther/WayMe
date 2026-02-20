@@ -9,7 +9,7 @@
  *   // Redirect to Strava OAuth
  *   const clientId = 'YOUR_CLIENT_ID';
  *   const redirectUri = encodeURIComponent(window.location.origin + '/auth/strava');
- *   const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=activity:read`;
+ *   const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=activity:read_all`;
  *   window.location.href = authUrl;
  * }
  * 

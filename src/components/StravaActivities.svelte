@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import { getActivities, getStravaStats } from '../db.js'
-  import { generateRouteSvg } from '../utils/polyline.js'
+  import ActivityMap from './ActivityMap.svelte'
 
   let activities = []
   let stats = {}
@@ -146,8 +146,8 @@
 
             <!-- Route Map -->
             {#if activity.summaryPolyline}
-              <div class="mb-4 rounded-lg overflow-hidden border border-gray-300">
-                {@html generateRouteSvg(activity.summaryPolyline, 600, 200)}
+              <div class="mb-4">
+                <ActivityMap polyline={activity.summaryPolyline} height={300} />
               </div>
             {/if}
 

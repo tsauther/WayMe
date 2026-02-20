@@ -26,6 +26,9 @@
         throw new Error('No authorization code received')
       }
 
+      // Clear the code from URL immediately to prevent reuse
+      window.history.replaceState({}, document.title, '/#/auth/strava')
+
       // Exchange code for tokens
       const tokenData = await stravaApi.getAccessToken(code)
 
