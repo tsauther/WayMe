@@ -6,6 +6,7 @@
   import Dashboard from './components/Dashboard.svelte'
   import Settings from './components/Settings.svelte'
   import SplashScreen from './components/SplashScreen.svelte'
+  import StravaAuth from './components/StravaAuth.svelte'
 
   let currentView = 'dashboard'
 
@@ -14,6 +15,30 @@
   let showInstallBanner = false
 
   onMount(() => {
+    // Check for route in hash
+    const hash = window.location.hash.slice(1) // Remove #
+    if (hash.startsWith('/auth/strava')) {
+      currentView = 'stravaauth'
+    } else if (hash.startsWith('/')) {
+      const view = hash.slice(1) // Remove leading /
+      if (['dashboard', 'entry', 'settings'].includes(view)) {
+        currentView = view
+      }
+    }
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', () => {
+      const newHash = window.location.hash.slice(1)
+      if (newHash.startsWith('/auth/strava')) {
+        currentView = 'stravaauth'
+      } else if (newHash.startsWith('/')) {
+        const newView = newHash.slice(1)
+        if (['dashboard', 'entry', 'settings'].includes(newView)) {
+          currentView = newView
+        }
+      }
+    })
+
     // Capture install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault()
@@ -36,6 +61,11 @@
 
   function setView(view) {
     currentView = view
+    if (view === 'stravaauth') {
+      window.location.hash = '/auth/strava'
+    } else {
+      window.location.hash = `/${view}`
+    }
   }
 
   function toggleTheme() {
@@ -116,6 +146,8 @@
       <WeightEntry />
     {:else if currentView === 'settings'}
       <Settings />
+    {:else if currentView === 'stravaauth'}
+      <StravaAuth />
     {/if}
   </div>
 </div>

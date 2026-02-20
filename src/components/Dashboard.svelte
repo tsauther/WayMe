@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { getWeights, getSettings } from '../db.js'
   import { theme } from '../theme.js'
+  import { stravaSyncService } from '../services/stravaSync.js'
   import uPlot from 'uplot'
   import 'uplot/dist/uPlot.min.css'
 
@@ -16,6 +17,7 @@
   let poundsPerWeek = 1
   let maintenanceCalories = 2500 // Estimated baseline
   let currentTheme = 'light'
+  let weeklyExerciseCalories = 0
 
   onMount(() => {
     // Load persisted time range from localStorage
@@ -34,6 +36,8 @@
     })
     
     loadData()
+    // Auto-sync Strava on app load
+    stravaSyncService.autoSync()
     return unsubscribe
   })
 
@@ -133,6 +137,9 @@
     // Calculate daily calorie limit dynamically
     dailyCalorieLimit = calculateDailyCalorieLimit()
 
+    // Load weekly exercise calories from Strava
+    weeklyExerciseCalories = await stravaSyncService.getWeeklyCalories()
+
     // Render chart if in graph mode
     if (displayMode === 'graph') {
       renderChart()
@@ -160,7 +167,7 @@
 <div class="space-y-6">
   <h2 class="text-3xl font-bold text-primary">Dashboard</h2>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
     <div class="card bg-gradient-to-br from-info to-info-content shadow-md">
       <div class="card-body">
         <h4 class="card-title text-lg text-white">Current Weight</h4>
@@ -179,6 +186,14 @@
       <div class="card-body">
         <h4 class="card-title text-lg text-white">Last Weigh In</h4>
         <p class="text-4xl font-bold text-white">{lastWeighIn || '--'}</p>
+      </div>
+    </div>
+
+    <div class="card bg-gradient-to-br from-secondary to-secondary-content shadow-md">
+      <div class="card-body">
+        <h4 class="card-title text-lg text-white">Weekly Exercise</h4>
+        <p class="text-5xl font-bold text-white">{weeklyExerciseCalories}</p>
+        <p class="text-xs text-white mt-2">calories burned</p>
       </div>
     </div>
   </div>

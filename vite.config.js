@@ -2,10 +2,19 @@ import { defineConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 export default defineConfig({
-  base: process.env.GITHUB_PAGES ? '/WayMe/' : '/',
+  base: '/',
   plugins: [svelte()],
   build: {
     target: 'esnext',
     minify: 'terser'
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/api')
+      }
+    }
   }
 })

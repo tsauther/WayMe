@@ -1,9 +1,11 @@
 <script>
   import { onMount } from 'svelte'
-  import { saveSettings, getSettings, exportData } from '../db.js'
+  import { saveSettings, getSettings, exportData, getStravaAuth, clearStravaAuth } from '../db.js'
   import { theme } from '../theme.js'
+  import { stravaSyncService } from '../services/stravaSync.js'
   import HistoricalData from './HistoricalData.svelte'
   import InstallPrompt from './InstallPrompt.svelte'
+  import StravaActivities from './StravaActivities.svelte'
 
   let settings = {
     unit: 'lbs',
@@ -16,10 +18,19 @@
   let saving = false
   let showSuccess = false
   let settingsTab = 'config'
+  let stravaAuth = null
+  let stravaConnected = false
 
   onMount(() => {
     loadSettings()
+    loadStravaAuth()
   })
+
+  async function loadStravaAuth() {
+    const auth = await getStravaAuth()
+    stravaAuth = auth
+    stravaConnected = !!auth && !!auth.accessToken
+  }
 
   async function loadSettings() {
     const keys = ['unit', 'poundsPerWeek', 'notifyHoursBefore', 'weigh_in_day', 'weigh_in_time']
@@ -73,6 +84,42 @@
   function toggleTheme() {
     theme.set($theme === 'dark' ? 'light' : 'dark')
   }
+
+  async function connectStrava() {
+    // Get Client ID from environment (you'll need to make this configurable)
+    const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID || '123456' // Placeholder
+    const redirectUri = encodeURIComponent(window.location.origin + '/#/auth/strava')
+    const scope = 'activity:read'
+    
+    const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`
+    window.location.href = authUrl
+  }
+
+  async function disconnectStrava() {
+    if (confirm('Are you sure you want to disconnect Strava? Your activity history will remain stored.')) {
+      await clearStravaAuth()
+      stravaAuth = null
+      stravaConnected = false
+    }
+  }
+
+  async function syncNow() {
+    saving = true
+    try {
+      const success = await stravaSyncService.autoSync()
+      if (success) {
+        showSuccess = true
+        await loadStravaAuth()
+        setTimeout(() => {
+          showSuccess = false
+        }, 3000)
+      }
+    } catch (err) {
+      console.error('Sync error:', err)
+    } finally {
+      saving = false
+    }
+  }
 </script>
 
 <div class="space-y-6">
@@ -90,6 +137,12 @@
       on:click={() => settingsTab = 'historical'}
     >
       Historical Data
+    </button>
+    <button 
+      class="tab {settingsTab === 'activities' ? 'tab-active' : ''}"
+      on:click={() => settingsTab = 'activities'}
+    >
+      Strava Activities
     </button>
   </div>
 
@@ -119,6 +172,33 @@
               />
             </label>
           </div>
+        </div>
+      </div>
+
+      <div class="card bg-base-200 shadow-md">
+        <div class="card-body">
+          <h3 class="card-title">Strava Integration</h3>
+          
+          {#if stravaConnected}
+            <div class="alert alert-success">
+              <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <span>Connected to {stravaAuth?.athlete?.firstname || 'Strava'}</span>
+            </div>
+            <p class="text-sm text-gray-500 mb-4">Your activities are automatically synced when you open the app.</p>
+            <div class="flex gap-2">
+              <button on:click={syncNow} class="btn btn-sm btn-secondary" disabled={saving}>
+                {saving ? 'Syncing...' : '🔄 Sync Now'}
+              </button>
+              <button on:click={disconnectStrava} class="btn btn-sm btn-outline btn-error">
+                Disconnect
+              </button>
+            </div>
+          {:else}
+            <p class="text-sm text-gray-500 mb-4">Connect your Strava account to automatically track exercise and calories burned.</p>
+            <button on:click={connectStrava} class="btn btn-primary w-full">
+              🏃 Connect Strava Account
+            </button>
+          {/if}
         </div>
       </div>
 
@@ -215,5 +295,7 @@
     </div>
   {:else if settingsTab === 'historical'}
     <HistoricalData />
+  {:else if settingsTab === 'activities'}
+    <StravaActivities />
   {/if}
 </div>
