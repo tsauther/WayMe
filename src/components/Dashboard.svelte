@@ -233,28 +233,28 @@
   <h2 class="text-3xl font-bold text-primary">Dashboard</h2>
 
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-    <div class="card bg-gradient-to-br from-info to-info-content shadow-md">
+    <div class="card bg-primary shadow-md">
       <div class="card-body">
         <h4 class="card-title text-lg text-white">Current Weight</h4>
         <p class="text-7xl font-bold text-white">{currentWeight || '--'}</p>
       </div>
     </div>
     
-    <div class="card bg-gradient-to-br from-success to-success-content shadow-md">
+    <div class="card bg-accent shadow-md">
       <div class="card-body">
         <h4 class="card-title text-lg text-white">Daily Calorie Limit</h4>
         <p class="text-7xl font-bold text-white">{dailyCalorieLimit}</p>
       </div>
     </div>
     
-    <div class="card bg-gradient-to-br from-warning to-warning-content shadow-md">
+    <div class="card bg-secondary shadow-md">
       <div class="card-body">
         <h4 class="card-title text-lg text-white">Last Weigh In</h4>
         <p class="text-4xl font-bold text-white">{lastWeighIn || '--'}</p>
       </div>
     </div>
 
-    <div class="card bg-gradient-to-br from-secondary to-secondary-content shadow-md">
+    <div class="card bg-error shadow-md">
       <div class="card-body">
         <h4 class="card-title text-lg text-white">Weekly Exercise</h4>
         <p class="text-5xl font-bold text-white">{weeklyExerciseCalories}</p>

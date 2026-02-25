@@ -6,10 +6,7 @@
   let activities = []
   let stats = {}
   let loading = true
-  let selectedType = 'All'
   let sortBy = 'recent'
-
-  const activityTypes = ['All', 'Run', 'Ride', 'Swim', 'Walk', 'Hike']
 
   onMount(async () => {
     await loadActivities()
@@ -25,12 +22,8 @@
     stats = await getStravaStats()
   }
 
-  $: filteredActivities = selectedType === 'All' 
-    ? activities 
-    : activities.filter(a => a.type === selectedType)
-
   $: sortedActivities = (() => {
-    const sorted = [...filteredActivities]
+    const sorted = [...activities]
     if (sortBy === 'recent') {
       return sorted.sort((a, b) => b.timestamp - a.timestamp)
     } else if (sortBy === 'longest') {
@@ -108,18 +101,8 @@
       </div>
     </div>
 
-    <!-- Filters -->
+    <!-- Sort Options -->
     <div class="flex gap-4 flex-wrap">
-      <div class="join">
-        {#each activityTypes as type}
-          <button
-            class="join-item btn {selectedType === type ? 'btn-active btn-primary' : 'btn-ghost'}"
-            on:click={() => selectedType = type}
-          >
-            {type}
-          </button>
-        {/each}
-      </div>
       <select bind:value={sortBy} class="select select-bordered select-sm">
         <option value="recent">Most Recent</option>
         <option value="longest">Longest Distance</option>
@@ -151,7 +134,7 @@
               </div>
             {/if}
 
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
               <div>
                 <div class="text-xs text-gray-500">Distance</div>
                 <div class="font-bold text-primary">{formatDistance(activity.distance || 0)}</div>
@@ -178,17 +161,30 @@
                   <div class="font-bold text-primary">{((activity.averageSpeed * 2.23694).toFixed(1))} mph</div>
                 </div>
               {/if}
+              {#if activity.averageWatts > 0}
+                <div>
+                  <div class="text-xs text-gray-500">Avg Watts</div>
+                  <div class="font-bold text-accent">{Math.round(activity.averageWatts)} W</div>
+                </div>
+              {/if}
+              {#if activity.sufferScore > 0}
+                <div>
+                  <div class="text-xs text-gray-500">Suffer Score</div>
+                  <div class="font-bold text-warning">{activity.sufferScore}</div>
+                </div>
+              {/if}
+              {#if activity.prCount > 0 || activity.achievementCount > 0}
+                <div>
+                  <div class="text-xs text-gray-500">Achievements</div>
+                  <div class="font-bold text-success">{(activity.prCount || 0) + (activity.achievementCount || 0)}</div>
+                </div>
+              {/if}
             </div>
           </div>
         </div>
       {/each}
     </div>
 
-    {#if sortedActivities.length === 0 && selectedType !== 'All'}
-      <div class="alert">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        <span>No {selectedType} activities found.</span>
-      </div>
-    {/if}
+
   {/if}
 </div>

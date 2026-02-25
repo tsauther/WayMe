@@ -48,7 +48,7 @@
     <span>Weight logged successfully!</span>
   </div>
 
-  <div class="card bg-gradient-to-br from-primary to-secondary shadow-xl">
+  <div class="card bg-primary shadow-xl">
     <div class="card-body text-center">
       <div class="text-6xl font-bold text-white font-mono">
         {weight || recentWeight || '0'}

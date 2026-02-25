@@ -9,10 +9,10 @@ function initTheme() {
     }
     // Check system preference
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark'
+      return 'waymeM3dark'
     }
   }
-  return 'light'
+  return 'waymeM3'
 }
 
 export const theme = writable(initTheme())
@@ -21,10 +21,6 @@ theme.subscribe(value => {
   if (typeof window !== 'undefined') {
     localStorage.setItem('wayme-theme', value)
     const html = document.documentElement
-    if (value === 'dark') {
-      html.setAttribute('data-theme', 'dark')
-    } else {
-      html.setAttribute('data-theme', 'light')
-    }
+    html.setAttribute('data-theme', value)
   }
 })

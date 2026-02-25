@@ -130,6 +130,12 @@ export async function saveActivity(activity) {
       movingTime: activity.moving_time,
       averageSpeed: activity.average_speed, // m/s
       maxSpeed: activity.max_speed, // m/s
+      averageWatts: activity.average_watts || 0, // watts
+      weightedAverageWatts: activity.weighted_average_watts || 0, // normalized power
+      maxWatts: activity.max_watts || 0, // peak watts
+      sufferScore: activity.suffer_score || 0, // relative intensity
+      prCount: (activity.segment_efforts || []).filter(s => s.pr_rank).length, // personal records
+      achievementCount: activity.achievement_count || 0, // badges earned
       summaryPolyline: activity.map?.summary_polyline || null,
       raw: activity // Store full Strava response
     }
