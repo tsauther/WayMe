@@ -99,13 +99,9 @@ export function getStaticMapUrl(encodedPolyline, width = 300, height = 200) {
   else if (maxDiff > 0.02) zoom = 13;
   else if (maxDiff > 0.01) zoom = 14;
 
-  // Use OpenStreetMap tile server via staticmap.openstreetmap.de
-  // Format: center, zoom, size
-  const pathString = coords.map(c => `${c.lat},${c.lng}`).join('|');
-  
-  // Use a simple tile-based static map service
-  // Alternative: Use Mapbox Static API with a token
-  const url = `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/path-2+f44-0.5(${encodeURIComponent('enc:' + encodedPolyline)})/${centerLng},${centerLat},${zoom},0/${width}x${height}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw`;
+  // Use OpenStreetMap static map service (no API key required)
+  // Format: staticmap.openstreetmap.de/staticmap.php?center=lat,lng&zoom=z&size=wxh&maptype=mapnik
+  const url = `https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat},${centerLng}&zoom=${zoom}&size=${width}x${height}&maptype=mapnik`;
   
   return url;
 }
