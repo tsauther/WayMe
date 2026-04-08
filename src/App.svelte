@@ -16,12 +16,17 @@
   let showInstallBanner = false
 
   onMount(() => {
+    const parseViewFromHash = (value) => {
+      const clean = value.startsWith('/') ? value.slice(1) : value
+      return clean.split('?')[0]
+    }
+
     // Check for route in hash
     const hash = window.location.hash.slice(1) // Remove #
     if (hash.startsWith('/auth/strava')) {
       currentView = 'stravaauth'
     } else if (hash.startsWith('/')) {
-      const view = hash.slice(1) // Remove leading /
+      const view = parseViewFromHash(hash)
       if (['dashboard', 'entry', 'settings', 'activities'].includes(view)) {
         currentView = view
       }
@@ -33,7 +38,7 @@
       if (newHash.startsWith('/auth/strava')) {
         currentView = 'stravaauth'
       } else if (newHash.startsWith('/')) {
-        const newView = newHash.slice(1)
+        const newView = parseViewFromHash(newHash)
         if (['dashboard', 'entry', 'settings', 'activities'].includes(newView)) {
           currentView = newView
         }

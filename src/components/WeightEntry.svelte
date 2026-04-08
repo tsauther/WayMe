@@ -1,15 +1,63 @@
 <script>
-  import { onMount } from 'svelte'
-  import { addWeight, getWeights } from '../db.js'
+  import { onDestroy, onMount } from 'svelte'
+  import { addWeight, getWeightById, getWeights, updateWeightEntry } from '../db.js'
 
   let weight = ''
   let unit = 'lbs'
   let recentWeight = null
   let loading = false
+  let editingId = null
+  let mode = 'create'
+  let successMessage = 'Weight logged successfully!'
 
   onMount(() => {
     loadRecentWeight()
+    syncEditStateFromHash()
+    window.addEventListener('hashchange', syncEditStateFromHash)
   })
+
+  onDestroy(() => {
+    window.removeEventListener('hashchange', syncEditStateFromHash)
+  })
+
+  function parseEditIdFromHash() {
+    const hash = window.location.hash || ''
+    const query = hash.split('?')[1]
+    if (!query) return null
+    const params = new URLSearchParams(query)
+    const id = params.get('edit')
+    if (!id) return null
+    const parsed = Number(id)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  async function syncEditStateFromHash() {
+    const id = parseEditIdFromHash()
+    if (!id) {
+      editingId = null
+      mode = 'create'
+      return
+    }
+
+    const entry = await getWeightById(id)
+    if (!entry) {
+      editingId = null
+      mode = 'create'
+      return
+    }
+
+    editingId = id
+    mode = 'edit'
+    weight = String(entry.weight)
+    unit = entry.unit || 'lbs'
+  }
+
+  function clearEditMode() {
+    editingId = null
+    mode = 'create'
+    weight = ''
+    window.location.hash = '/entry'
+  }
 
   async function loadRecentWeight() {
     const weights = await getWeights(1)
@@ -22,9 +70,17 @@
     if (weight && !isNaN(weight)) {
       loading = true
       try {
-        await addWeight(parseFloat(weight), unit)
-        recentWeight = weight
-        weight = ''
+        if (mode === 'edit' && editingId) {
+          await updateWeightEntry(editingId, parseFloat(weight), unit)
+          recentWeight = parseFloat(weight)
+          successMessage = 'Weight updated successfully!'
+          clearEditMode()
+        } else {
+          await addWeight(parseFloat(weight), unit)
+          recentWeight = parseFloat(weight)
+          weight = ''
+          successMessage = 'Weight logged successfully!'
+        }
         // Show success message
         const elem = document.getElementById('success-message')
         if (elem) {
@@ -41,11 +97,11 @@
 </script>
 
 <div class="space-y-6">
-  <h2 class="text-3xl font-bold text-primary">Log Weight</h2>
+  <h2 class="text-3xl font-bold text-primary">{mode === 'edit' ? 'Edit Weight' : 'Log Weight'}</h2>
 
   <div id="success-message" class="alert alert-success hidden">
     <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-    <span>Weight logged successfully!</span>
+    <span>{successMessage}</span>
   </div>
 
   <div class="card bg-primary shadow-xl">
@@ -111,6 +167,12 @@
     class="btn btn-primary btn-lg w-full"
     disabled={loading || !weight}
   >
-    {loading ? 'Saving...' : 'Log Weight'}
+    {loading ? 'Saving...' : (mode === 'edit' ? 'Update Weight' : 'Log Weight')}
   </button>
+
+  {#if mode === 'edit'}
+    <button class="btn btn-ghost btn-lg w-full" on:click={clearEditMode}>
+      Cancel Edit
+    </button>
+  {/if}
 </div>

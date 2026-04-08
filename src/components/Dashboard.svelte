@@ -285,6 +285,7 @@
                 <tr>
                   <th>Date</th>
                   <th>Weight</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -292,6 +293,11 @@
                   <tr>
                     <td>{new Date(entry.timestamp).toLocaleDateString()}</td>
                     <td>{entry.weight} {entry.unit}</td>
+                    <td>
+                      <a class="link link-primary" href={`#/entry?edit=${entry.id}`}>
+                        Edit
+                      </a>
+                    </td>
                   </tr>
                 {/each}
               </tbody>

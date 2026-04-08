@@ -63,6 +63,62 @@ class StravaApiClient {
   }
 
   /**
+   * Fetch full Strava activity detail for a single activity
+   * @param {string} accessToken - Strava access token
+   * @param {number|string} activityId - Strava activity id
+   * @returns {Promise<Object>}
+   */
+  async getActivityDetail(accessToken, activityId) {
+    const response = await fetch(`${this.baseUrl}/api/strava/activity/${activityId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(`Failed to fetch activity detail: ${error.error || error.message || 'Unknown error'}`)
+    }
+
+    const data = await response.json()
+    return data.activity
+  }
+
+  /**
+   * Fetch selected Strava streams for a single activity
+   * @param {string} accessToken - Strava access token
+   * @param {number|string} activityId - Strava activity id
+   * @param {string[]} keys - Stream keys to request
+   * @returns {Promise<{streams:Object, requestedKeys:string[]}>}
+   */
+  async getActivityStreams(accessToken, activityId, keys = []) {
+    const query = new URLSearchParams({
+      keys: keys.join(',')
+    })
+
+    const response = await fetch(`${this.baseUrl}/api/strava/activity/${activityId}/streams?${query.toString()}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(`Failed to fetch activity streams: ${error.error || error.message || 'Unknown error'}`)
+    }
+
+    const data = await response.json()
+    return {
+      streams: data.streams,
+      requestedKeys: data.requestedKeys || keys
+    }
+  }
+
+  /**
    * Refresh access token when it expires
    * @param {string} refreshToken - Strava refresh token
    * @returns {Promise<{accessToken, refreshToken, expiresAt}>}

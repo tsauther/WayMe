@@ -12,6 +12,18 @@ db.version(1).stores({
   weeklyExercise: '++id, weekStartTimestamp'
 })
 
+db.version(2).stores({
+  weights: '++id, timestamp',
+  settings: 'key',
+  activities: '++id, timestamp, type, stravaId',
+  stravaStats: 'key',
+  stravaAuth: 'key',
+  weeklyExercise: '++id, weekStartTimestamp',
+  stravaDetailCache: 'stravaId, fetchedAt, status, schemaVersion',
+  stravaStreamsCache: '[stravaId+keySignature], stravaId, keySignature, fetchedAt, status',
+  derivedAnalyticsCache: '[stravaId+analyticsVersion], stravaId, analyticsVersion, fetchedAt, status'
+})
+
 // Database reset function - clears all data but keeps schema
 export async function resetDatabase() {
   try {
@@ -41,6 +53,29 @@ export async function getWeights(limit = 100) {
   } catch (error) {
     console.error('Error fetching weights:', error)
     return []
+  }
+}
+
+export async function getWeightById(id) {
+  try {
+    return await db.weights.get(id)
+  } catch (error) {
+    console.error('Error fetching weight by id:', error)
+    return null
+  }
+}
+
+export async function updateWeightEntry(id, weight, unit) {
+  try {
+    const updated = await db.weights.update(id, {
+      weight,
+      unit,
+      updatedAt: Date.now()
+    })
+    return updated > 0
+  } catch (error) {
+    console.error('Error updating weight entry:', error)
+    return false
   }
 }
 
@@ -283,7 +318,18 @@ export async function exportData() {
     const settings = await db.settings.toArray()
     const activities = await db.activities.toArray()
     const stravaStats = await db.stravaStats.toArray()
-    return JSON.stringify({ weights, settings, activities, stravaStats }, null, 2)
+    const stravaDetailCache = await db.stravaDetailCache.toArray()
+    const stravaStreamsCache = await db.stravaStreamsCache.toArray()
+    const derivedAnalyticsCache = await db.derivedAnalyticsCache.toArray()
+    return JSON.stringify({
+      weights,
+      settings,
+      activities,
+      stravaStats,
+      stravaDetailCache,
+      stravaStreamsCache,
+      derivedAnalyticsCache
+    }, null, 2)
   } catch (error) {
     console.error('Error exporting data:', error)
     return null
@@ -357,6 +403,45 @@ export async function importData(jsonData) {
           importedCount++
         } catch (err) {
           console.warn('Skipped stat:', err)
+          skippedCount++
+        }
+      }
+    }
+
+    // Import detail cache
+    if (data.stravaDetailCache && Array.isArray(data.stravaDetailCache)) {
+      for (const item of data.stravaDetailCache) {
+        try {
+          await db.stravaDetailCache.put(item)
+          importedCount++
+        } catch (err) {
+          console.warn('Skipped detail cache item:', err)
+          skippedCount++
+        }
+      }
+    }
+
+    // Import streams cache
+    if (data.stravaStreamsCache && Array.isArray(data.stravaStreamsCache)) {
+      for (const item of data.stravaStreamsCache) {
+        try {
+          await db.stravaStreamsCache.put(item)
+          importedCount++
+        } catch (err) {
+          console.warn('Skipped streams cache item:', err)
+          skippedCount++
+        }
+      }
+    }
+
+    // Import analytics cache
+    if (data.derivedAnalyticsCache && Array.isArray(data.derivedAnalyticsCache)) {
+      for (const item of data.derivedAnalyticsCache) {
+        try {
+          await db.derivedAnalyticsCache.put(item)
+          importedCount++
+        } catch (err) {
+          console.warn('Skipped analytics cache item:', err)
           skippedCount++
         }
       }
